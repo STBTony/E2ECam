@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>E2E Webcam - Streamee</title>
+    <script
+        src="https://code.jquery.com/jquery-3.2.1.min.js"
+        integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
+        crossorigin="anonymous"></script>
+    <script type="text/javascript" src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+    <div style="float: right">
+        <video src="" id="video" style="width: 680px;height: 320px" autoplay="true"></video>
+        <canvas style="display: none;" id="image-conversion"></canvas>
+    </div>
+    <div id="streameeList">
+    <div id="logger"></div>
+    <script type="text/javascript">
+        var canvas = document.getElementById('image-conversion');
+        var context = canvas.getContext('2d');
+        canvas.width= 800;
+        canvas.height= 600;
+
+        context.width= canvas.width;
+        context.height= canvas.height;
+        var video = document.getElementById('video');
+        var socket = io();
+        function uuidv4() {
+            return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+                (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+            );
+        }
+        let uuid = uuidv4();
+        console.log('current uuid:' + uuid);
+        function loadCamera(stream) {
+            video.src = window.URL.createObjectURL(stream);
+            console.log('Camera Integration Successful');
+        }
+
+        function error() {
+            console.log('Error');
+        }
+
+        function viewVideo(video,context) {
+            context.drawImage(video, 0, 0, context.width,context.height);
+            var packet = {
+                'uuid': uuid,
+                'image': canvas.toDataURL('image/webq')
+            };
+            socket.emit('stream', packet);
+        }
+
+        var constraints = {
+            audio: false,
+            video: true
+        };
+
+        $(function () {
+            navigator.getUserMedia = (navigator.getUserMedia);
+                // || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msgGetUserMedia);
+            if (navigator.getUserMedia) 
+            {   
+                console.log('update video');
+                navigator.getUserMedia(constraints, loadCamera, error);
+            }
+            setInterval(function() {
+                viewVideo(video, context);
+            }, 2000);
+        });
+
+        var socket = io();
+        var streameeList = [];
+        socket.on('stream',function (packet) {
+            if (packet.uuid !== uuid && !streameeList.includes(packet.uuid)) {
+                var container = document.createElement('DIV');
+                var node = document.createElement("IMG");
+                node.width = 300;
+                // node.height = 200;
+                node.setAttribute('id', packet.uuid);
+                var button = document.createElement("BUTTON");
+                button.setAttribute('text', 'adfsasdf');
+                button.setAttribute('value', packet.uuid);
+
+                container.appendChild(node);
+                container.appendChild(button);
+
+                document.getElementById('streameeList').appendChild(container);
+                streameeList.push(packet.uuid);
+                console.log('new packet received: ' + packet.uuid);
+            }
+            console.log('packet image received');
+            var img = document.getElementById(packet.uuid);
+            img.src = packet.image;
+        });
+    </script>
+</body>
+</html>
